@@ -1,6 +1,6 @@
 use anyhow::Result;
-use nalgebra::{Matrix4, Point3, Vector3};
-use rand::{seq::SliceRandom, Rng, SeedableRng};
+use nalgebra::{Matrix4, Vector3};
+use rand::{Rng, SeedableRng};
 use std::io::{Cursor, Read};
 
 use stl_io::{read_stl, write_stl, Normal, Triangle, Vertex};
