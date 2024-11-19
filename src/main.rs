@@ -46,7 +46,7 @@ fn save(mesh: Vec<[Vector3<f32>; 3]>) -> Result<()> {
 fn main_transform(triangles: Vec<[Vector3<f32>; 3]>) -> Vec<[Vector3<f32>; 3]> {
     let mut rng = rand_xoshiro::Xoshiro256StarStar::seed_from_u64(0);
     let mut ret = triangles.clone();
-    ret.extend(growths(&mut rng, &triangles, 3));
+    ret.extend(growths(&mut rng, &triangles, 2));
     ret
 }
 
@@ -59,16 +59,14 @@ fn growths<R: Rng>(
         return Vec::new();
     };
 
-    let num_children = 3;
+    let num_children = 5;
     let child_scale = 0.5;
 
     let mut ret = Vec::new();
 
     for _ in 0..num_children {
-        let Some(triangle) = base_model.choose(rng) else {
-            return Vec::new();
-        };
-        let transformation = place_on_triangle(*triangle) * Matrix4::new_scaling(child_scale);
+        let triangle = select(rng, base_model);
+        let transformation = place_on_triangle(triangle) * Matrix4::new_scaling(child_scale);
         ret.extend(transform(base_model.to_vec(), transformation));
         ret.extend(transform(
             growths(rng, base_model, next_depth),
@@ -77,6 +75,33 @@ fn growths<R: Rng>(
     }
 
     ret
+}
+
+/// Choose a random triangle, weighted by its area.
+// this could be sped up with some precomputation and a binary search but yolo
+fn select<R: Rng>(rng: &mut R, triangles: &[[Vector3<f32>; 3]]) -> [Vector3<f32>; 3] {
+    assert!(!triangles.is_empty());
+
+    let areas = triangles
+        .iter()
+        .map(|triangle| {
+            let [t0, t1, t2] = triangle;
+            let a = t1 - t0;
+            let b = t2 - t0;
+            a.cross(&b).norm()
+        })
+        .collect::<Vec<_>>();
+    let total_area = areas.iter().sum::<f32>();
+    let mut area = rng.gen_range(0.0..total_area);
+    for (i, &a) in areas.iter().enumerate() {
+        if area < a {
+            return triangles[i];
+        }
+        area -= a;
+    }
+
+    // probably floating point error, return the last triangle
+    triangles[triangles.len() - 1]
 }
 
 fn transform(
